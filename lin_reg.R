@@ -7,7 +7,10 @@ g <- glimpse
 h <- head
 s <- summary
 
+
 da <- read_csv("selected-file_2012_2017_machinereadable.csv")
+
+#################################### Data Cleaning ####################################
 
 da1 <- da %>%
         select(FAC_NAME,
