@@ -111,7 +111,8 @@ da5_RMSE_SD <- rbind(da5_RMSE, da5_SD) %>%
                                  levels = c("In_RMSE",
                                             "Out_RMSE",
                                             "Combo_RMSE",
-                                            "SD")))
+                                            "SD")),
+               Regression = "Linear")
 
 
 da5_RMS_relerr <- da5 %>%
@@ -140,7 +141,8 @@ da5_Rsquared <- data.frame(
                                      "Combo_rs")),
         Value = c(1 - var_e_In/var_o, 
                   1 - var_e_Out/var_o,
-                  1 - var_e_Combo/var_o))
+                  1 - var_e_Combo/var_o),
+        Regression = "Linear")
 
 
 
