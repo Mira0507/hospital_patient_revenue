@@ -115,7 +115,7 @@ da5_RMSE_SD <- rbind(da5_RMSE, da5_SD) %>%
                                             "Out_RMSE",
                                             "Combo_RMSE",
                                             "SD")),
-               Regression = "Linear")
+               Regression = "Linear (Log)")
 
 
 da5_RMS_relerr <- da5 %>%
@@ -145,7 +145,7 @@ da5_Rsquared <- data.frame(
         Value = c(1 - var_e_In/var_o, 
                   1 - var_e_Out/var_o,
                   1 - var_e_Combo/var_o),
-        Regression = "Linear")
+        Regression = "Linear (Log)")
 
 
 
@@ -268,10 +268,8 @@ plot_eval1 <-
         geom_smooth(method = "lm", se = F, color = "black") + 
         facet_grid(Model ~.) + 
         theme_bw() + 
-        scale_x_log10() +
-        scale_y_log10() +
-        xlab("Predicted Patient Revenue (Log-transformed)") + 
-        ylab("Original Patient Revenue (Log-transformed)") + 
+        xlab("Predicted Patient Revenue") + 
+        ylab("Original Patient Revenue") + 
         ggtitle("Relationship between Predicted and Original Outcomes")
 
 plot_resid <- function(df, xname, tit, c) {
@@ -296,6 +294,8 @@ grid.arrange(plot_In_resid,
              plot_Out_resid,
              plot_Combo_resid,
              nrow = 1)
+
+
 
 library(WVPlots)
 # Gain Curves
