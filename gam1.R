@@ -191,7 +191,7 @@ plot_gam_insp5 <-
         geom_smooth(se = F) + 
         theme_bw() + 
         xlab("Surgery Time (Minutes)") + 
-        ylab("Net Patient Revenue)") + 
+        ylab("Net Patient Revenue") + 
         ggtitle("Relationship between Patient Revenue and Surgeries")
 
 plot_gam_eval1 <- 
