@@ -83,6 +83,11 @@ da_gam4 <-
                Out_relerr = Out_resid / NET_PT_REV, 
                Combo_relerr = Combo_resid / NET_PT_REV)
 
+da_gam4_cor <- da_gam4 %>%
+        summarize(In_cor = cor(NET_PT_REV, In_Pred),
+                  Out_cor = cor(NET_PT_REV, Out_Pred),
+                  Combo_cor = cor(NET_PT_REV, Combo_Pred))
+
 da_gam5 <- 
         gather(da_gam4, Model, Value, c(In_Pred, Out_Pred, Combo_Pred)) %>%
         mutate(Model = factor(Model, levels = c("In_Pred",
