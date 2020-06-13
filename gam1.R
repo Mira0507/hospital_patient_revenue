@@ -116,7 +116,7 @@ da_gam5_RMSE_SD <- rbind(da_gam5_RMSE, da_gam4_SD) %>%
 
 da_linear_gam_RMSE_SD <- rbind(da5_RMSE_SD, da_gam5_RMSE_SD) %>%
         mutate(Regression = factor(Regression, 
-                                   levels = c("Linear",
+                                   levels = c("Linear (Log)",
                                               "GAM")))
                                    
 
@@ -136,7 +136,7 @@ pseudoR2 <- data.frame(Rsquared = c("In_rs",
 
 R2_linear_gam <- rbind(da5_Rsquared, pseudoR2) %>%
         mutate(Regression = factor(Regression,
-                                   levels = c("Linear",
+                                   levels = c("Linear (Log)",
                                               "GAM")))
 
 
