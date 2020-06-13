@@ -25,25 +25,14 @@ da1 <- da %>%
                                  "Outpatients"),
                Category = factor(Category))
 
-ggplot(da1, aes(x = Category, y = Value, fill = Category)) + 
-        geom_boxplot()
+da_gam2 <- da1 %>%
+        filter(NET_PT_REV < 3000000000,
+               NET_PT_REV > 1000000,
+               Value < 2000000,
+               Value > 1500)
 
-ggplot(da1, aes(x = Category, y = Value, fill = Category)) + 
-        geom_boxplot() +
-        scale_y_log10()
-        
-
-da2 <- da1 %>%
-        filter(Value < 2000000, 
-               Value > 1500,
-               NET_PT_REV < 3000000000,
-               NET_PT_REV > 1000000)
-
-
-
-da3 <- spread(da2, Category, Value)
-
-da4 <- da3[complete.cases(da3), ]
+da_gam3 <- spread(da_gam2, Category, Value) 
+da_gam4 <- da_gam3[complete.cases(da_gam3), ]
 
 
 
@@ -51,45 +40,47 @@ da4 <- da3[complete.cases(da3), ]
 ################################### Modeling ###################################
 library(mgcv)
 
-fmIn_gam <- as.formula(log(NET_PT_REV) ~ s(log(Inpatients)))
-fmOut_gam <- as.formula(log(NET_PT_REV) ~ s(log(Outpatients)))
-fmCombo_gam <- as.formula(log(NET_PT_REV) ~ s(log(Inpatients)) + s(log(Outpatients)))
+fmIn_gamlog <- as.formula(log(NET_PT_REV) ~ s(log(Inpatients)))
+fmOut_gamlog <- as.formula(log(NET_PT_REV) ~ s(log(Outpatients)))
+fmCombo_gamlog <- as.formula(log(NET_PT_REV) ~ s(log(Inpatients)) + s(log(Outpatients)))
 
 
 library(vtreat) 
-da4_gam <- da4 %>%
+da4_gamlog <- da_gam4 %>%
         mutate(In_Pred = 0,
                Out_Pred = 0,
                Combo_Pred = 0)
 
 set.seed(15)
-splitPlan <- kWayCrossValidation(nrow(da4), 4, NULL, NULL)
+splitPlan <- kWayCrossValidation(nrow(da4_gamlog), 4, NULL, NULL)
 for (i in 1:4) {
         split <- splitPlan[[i]]
-        model <- gam(fmIn_gam, data = da4_gam[split$train, ], family = gaussian)
-        da4_gam$In_Pred[split$app] <- exp(predict(model, newdata = da4_gam[split$app, ]))
+        model <- gam(fmIn_gamlog, data = da4_gamlog[split$train, ], family = gaussian)
+        da4_gamlog$In_Pred[split$app] <- exp(predict(model, newdata = da4_gamlog[split$app, ]))
 }
 
 
 set.seed(981)
-splitPlan <- kWayCrossValidation(nrow(da4), 4, NULL, NULL)
+splitPlan <- kWayCrossValidation(nrow(da4_gamlog), 4, NULL, NULL)
 for (i in 1:4) {
         split <- splitPlan[[i]]
-        model <- gam(fmIn_gam, data = da4_gam[split$train, ], family = gaussian)
-        da4_gam$Out_Pred[split$app] <- exp(predict(model, newdata = da4_gam[split$app, ]))
+        model <- gam(fmOut_gamlog, data = da4_gamlog[split$train, ], family = gaussian)
+        da4_gamlog$Out_Pred[split$app] <- exp(predict(model, newdata = da4_gamlog[split$app, ]))
 }
 
 set.seed(1530)
-splitPlan <- kWayCrossValidation(nrow(da4), 4, NULL, NULL)
+splitPlan <- kWayCrossValidation(nrow(da4_gamlog), 4, NULL, NULL)
 for (i in 1:4) {
         split <- splitPlan[[i]]
-        model <- gam(fmIn_gam, data = da4_gam[split$train, ], family = gaussian)
-        da4_gam$Combo_Pred[split$app] <- exp(predict(model, newdata = da4_gam[split$app, ]))
+        model <- gam(fmCombo_gamlog, data = da4_gamlog[split$train, ], family = gaussian)
+        da4_gamlog$Combo_Pred[split$app] <- exp(predict(model, newdata = da4_gamlog[split$app, ]))
 }
 
 
 #################################### Evaluation ####################################
-da4_gam <- da4_gam %>% 
+
+# computing residuals
+da4_gamlog <- da4_gamlog %>% 
         mutate(In_resid = In_Pred - NET_PT_REV,
                Out_resid = Out_Pred - NET_PT_REV,
                Combo_resid = Combo_Pred - NET_PT_REV,
@@ -98,7 +89,7 @@ da4_gam <- da4_gam %>%
                Combo_relerr = Combo_resid / NET_PT_REV)
         
 
-da5_gam <- gather(da4_gam, Model, Value, c(In_Pred, Out_Pred, Combo_Pred)) %>%
+da5_gamlog <- gather(da4_gamlog, Model, Value, c(In_Pred, Out_Pred, Combo_Pred)) %>%
         mutate(Model = factor(Model, levels = c("In_Pred",
                                                 "Out_Pred",
                                                 "Combo_Pred"))) %>% 
@@ -106,70 +97,168 @@ da5_gam <- gather(da4_gam, Model, Value, c(In_Pred, Out_Pred, Combo_Pred)) %>%
         gather(Relative_Error, rel_err, c(In_relerr, Out_relerr, Combo_relerr)) 
 
         
-
-da5_gam_cor <- da5_gam %>%
+# computing correlation
+da5_gamlog_cor <- da5_gamlog %>%
         group_by(Model) %>%
         summarize(correlation = cor(Value, NET_PT_REV))
         
 
-da5_gam_RMSE <- da5_gam %>% 
+# computing RMSE
+da5_gamlog_RMSE <- da5_gamlog %>% 
         group_by(Residual) %>%
         summarize(Value = sqrt(mean(resid_val^2))) %>%
         rename(Category = Residual)
         
 
-da5_gam_SD <- data.frame(Category = "SD",
-                     Value = sd(da4$NET_PT_REV))
+da5_gamlog_SD <- data.frame(Category = "SD",
+                     Value = sd(da_gam4$NET_PT_REV))
 
-da5_gam_RMSE_SD <- rbind(da5_gam_RMSE, da5_gam_SD) %>%
+da5_gamlog_RMSE_SD <- rbind(da5_gamlog_RMSE, da5_gamlog_SD) %>%
         mutate(Category = str_replace_all(Category, "resid", "RMSE"),
                Category = factor(Category, 
                                  levels = c("In_RMSE",
                                             "Out_RMSE",
                                             "Combo_RMSE",
-                                            "SD")))
+                                            "SD")),
+               Regression = "GAM (Log)")
+
+da5_compare_RMSE_SD <- rbind(da_linear_gam_RMSE_SD, 
+                             da5_gamlog_RMSE_SD) %>%
+        mutate(Regression = factor(Regression, 
+                                   levels = c("Linear (Log)",
+                                              "GAM",
+                                              "GAM (Log)")))
 
 
-da5_gam_RMS_relerr <- da5_gam %>%
-        group_by(Relative_Error) %>%
-        summarize(Value = sqrt(mean(rel_err^2))) %>%
-        rename(RMS_relerr = Relative_Error) %>%
-        mutate(RMS_relerr = str_replace_all(RMS_relerr, "relerr", "RMS_Rel_err"),
-               RMS_relerr = factor(RMS_relerr, 
-                                   levels = c("In_RMS_Rel_err",
-                                              "Out_RMS_Rel_err",
-                                              "Combo_RMS_Rel_err")))
+# Computing pseudoR^2 
+gamlog_mod1 <- gam(fmIn_gamlog, data = da_gam4, family = gaussian)
+gamlog_mod2 <- gam(fmOut_gamlog, data = da_gam4, family = gaussian)
+gamlog_mod3 <- gam(fmCombo_gamlog, data = da_gam4, family = gaussian)
+
+gamlog_pseudoR2 <- data.frame(Rsquared = c("In_rs", 
+                                    "Out_rs",
+                                    "Combo_rs"),
+                       Value = c(summary(gamlog_mod1)$dev.expl,
+                                 summary(gamlog_mod2)$dev.expl,
+                                 summary(gamlog_mod3)$dev.expl),
+                       Regression = "GAM (Log)")
+
+R2_compare <- rbind(R2_linear_gam, gamlog_pseudoR2) %>%
+        mutate(Regression = factor(Regression,
+                                   levels = c("Linear (Log)",
+                                              "GAM",
+                                              "GAM (Log)")))
 
 
 
 
-var_gam_e_In <- var(da4_gam$In_resid)
-var_gam_e_Out <- var(da4_gam$Out_resid)
-var_gam_e_Combo <- var(da4_gam$Combo_resid)
-var_gam_o <- var(da4_gam$NET_PT_REV)
 
 
-da5_gam_Rsquared <- data.frame(
-        Rsquared = factor(c("In_rs",
-                            "Out_rs",
-                            "Combo_rs"), 
-                          levels = c("In_rs",
-                                     "Out_rs",
-                                     "Combo_rs")),
-        Value = c(1 - var_gam_e_In/var_gam_o, 
-                  1 - var_gam_e_Out/var_gam_o,
-                  1 - var_gam_e_Combo/var_gam_o))
 
-gam_mod1 <- gam(fmIn_gam, data = da4_gam, family = gaussian)
-gam_mod2 <- gam(fmOut_gam, data = da4_gam, family = gaussian)
-gam_mod3 <- gam(fmCombo_gam, data = da4_gam, family = gaussian)
-
-pseudoR2_mod1 <- 
-summary(gam_mod1)$
 
 
 ################################## Plotting ####################################
 
-plot(gam_mod1)
-plot(gam_mod2)
-plot(gam_mod3)
+library(gridExtra)
+
+# Filtered data inspection
+plot_gamlog_insp6 <-
+        ggplot(da_gam2, 
+               aes(x = Value, y = NET_PT_REV, color = Category)) + 
+        geom_point(alpha = 0.2) + 
+        geom_smooth(se = F) +
+        theme_bw() + 
+        scale_y_log10() + 
+        scale_x_log10() + 
+        xlab("Surgery Time (Log-transformed Minutes)") +
+        ylab("Net Patient Revenue (Log-transformed)") + 
+        ggtitle("Relationship between Patient Revenue and Surgeries (After Outlier Filtering)")
+
+# outcome vs prediction
+plot_gamlog_eval1 <- 
+        ggplot(da5_gamlog, aes(x = Value, y = NET_PT_REV, color = Model)) + 
+        geom_jitter() + 
+        geom_smooth(method = "lm", se = F, color = "black") + 
+        facet_grid(Model ~.) + 
+        theme_bw() + 
+        xlab("Predicted Patient Revenue") + 
+        ylab("Original Patient Revenue") + 
+        ggtitle("Relationship between Predicted and Original Outcomes")
+
+# plotting residual
+plot_resid <- function(df, xname, tit, c) {
+        ggplot(df, aes(x = xname, y = In_resid)) + 
+                geom_point(alpha = 0.3, color = c) + 
+                geom_smooth(method = "lm", se = F, color = "black") + 
+                theme_bw() + 
+                ylab("Residual") + 
+                xlab("Prediction") + 
+                ggtitle(tit)
+}
+
+
+plot_gamlog_In_resid <- plot_resid(da4_gamlog, da4_gamlog$In_Pred, "Residual in Model 1", "#FF9999")
+
+plot_gamlog_Out_resid <- plot_resid(da4_gamlog, da4_gamlog$Out_Pred, "Residual in Model 2", "#009933")
+
+plot_gamlog_Combo_resid <- plot_resid(da4_gamlog, da4_gamlog$Combo_Pred, "Residual in Model 3", "#3399FF")
+
+grid.arrange(plot_gamlog_In_resid, 
+             plot_gamlog_Out_resid, 
+             plot_gamlog_Combo_resid, 
+             nrow = 1)
+
+library(WVPlots)
+# Gain Curves
+gain_curve <- function(df, model, tit) {
+        GainCurvePlot(df, model, "NET_PT_REV", tit) + 
+                theme_bw() +
+                xlab("Fraction Items in Sort Order") + 
+                ylab("Fraction Total Sum Net Patient Revenue")
+}
+
+gain_curve_gamlog_In <- gain_curve(da4_gamlog, "In_Pred", "")
+gain_curve_gamlog_Out <- gain_curve(da4_gamlog, "Out_Pred", "")
+gain_curve_gamlog_Combo <- gain_curve(da4_gamlog, "Combo_Pred", "")
+
+grid.arrange(gain_curve_gamlog_In, 
+             gain_curve_gamlog_Out, 
+             gain_curve_gamlog_Combo, 
+             ncol = 1)
+
+# RMSE
+plot_RMSE_gamlog <-
+        ggplot(da5_compare_RMSE_SD, 
+               aes(x = Category, 
+                   y = Value,
+                   fill = Regression,
+                   color = Category)) + 
+        geom_bar(stat = "identity", 
+                 position = position_dodge(width = 0.7),
+                 alpha = 0.7,
+                 size = 1) + 
+        theme_bw() +
+        xlab("By Model") + 
+        ylab("RMSE or SD") + 
+        ggtitle("RMSE")
+
+
+# R^2
+plot_R2_compare <- 
+        ggplot(R2_compare, 
+               aes(x = Rsquared, 
+                   y = Value, 
+                   fill = Regression,
+                   color = Rsquared)) + 
+        geom_bar(stat = "identity",
+                 position = position_dodge(width = 0.7),
+                 size = 1,
+                 alpha = 0.7) +
+        theme_bw() + 
+        xlab("By Model") + 
+        ylab("R^2 or Pseudo-R^2") + 
+        ggtitle("R Squared")
+
+grid.arrange(plot_RMSE_gamlog, 
+             plot_R2_compare, 
+             ncol = 1)
