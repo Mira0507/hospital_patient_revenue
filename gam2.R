@@ -60,7 +60,7 @@ for (i in 1:4) {
 }
 
 
-set.seed(981)
+set.seed(15)
 splitPlan <- kWayCrossValidation(nrow(da4_gamlog), 4, NULL, NULL)
 for (i in 1:4) {
         split <- splitPlan[[i]]
@@ -68,7 +68,7 @@ for (i in 1:4) {
         da4_gamlog$Out_Pred[split$app] <- exp(predict(model, newdata = da4_gamlog[split$app, ]))
 }
 
-set.seed(1530)
+set.seed(15)
 splitPlan <- kWayCrossValidation(nrow(da4_gamlog), 4, NULL, NULL)
 for (i in 1:4) {
         split <- splitPlan[[i]]
