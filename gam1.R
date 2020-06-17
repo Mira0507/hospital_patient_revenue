@@ -96,6 +96,10 @@ da_gam5 <-
         gather(Residual, resid_val, c(In_resid, Out_resid, Combo_resid)) %>%
         gather(Relative_Error, rel_err, c(In_relerr, Out_relerr, Combo_relerr)) 
 
+da_gam5_relerr <- da_gam5 %>%
+        group_by(Relative_Error) %>%
+        summarize(RMS_Relative_Error = sqrt(mean(rel_err^2)))
+
 # computing RMSE
 da_gam5_RMSE <- da_gam5 %>% 
         group_by(Residual) %>%
