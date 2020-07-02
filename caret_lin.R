@@ -356,16 +356,16 @@ names(nonzero_obs) <- NewColName
 TrainFit_rename <- TrainFit_data %>%
         rename(Model = Surgery)
 
-TestFit <- summarize(nonzero_obs,
-                      RMSE_Inpatient = sqrt(mean(Resid_Inpatient^2)),
-                      RMSE_Outpatient = sqrt(mean(Resid_Outpatient^2)),
-                      RMSE_Combo = sqrt(mean(Resid_Combo^2)),
-                      MAE_Inpatient = mean(abs(Resid_Inpatient)),
-                      MAE_Outpatient = mean(abs(Resid_Outpatient)),
-                      MAE_Combo = mean(abs(Resid_Combo)),
-                      Rsquared_Inpatient = 1 - (sum(Resid_Inpatient^2) / sum((NET_PT_REV - mean(NET_PT_REV))^2)),
-                      Rsquared_Outpatient = 1 - (sum(Resid_Outpatient^2) / sum((NET_PT_REV - mean(NET_PT_REV))^2)),
-                      Rsquared_Combo = 1 - (sum(Resid_Combo^2) / sum((NET_PT_REV - mean(NET_PT_REV))^2))) %>%
+TestFit_df <- summarize(nonzero_obs,
+                        RMSE_Inpatient = sqrt(mean(Resid_Inpatient^2)),
+                        RMSE_Outpatient = sqrt(mean(Resid_Outpatient^2)),
+                        RMSE_Combo = sqrt(mean(Resid_Combo^2)),
+                        MAE_Inpatient = mean(abs(Resid_Inpatient)),
+                        MAE_Outpatient = mean(abs(Resid_Outpatient)),
+                        MAE_Combo = mean(abs(Resid_Combo)),
+                        Rsquared_Inpatient = 1 - (sum(Resid_Inpatient^2) / sum((NET_PT_REV - mean(NET_PT_REV))^2)),
+                        Rsquared_Outpatient = 1 - (sum(Resid_Outpatient^2) / sum((NET_PT_REV - mean(NET_PT_REV))^2)),
+                        Rsquared_Combo = 1 - (sum(Resid_Combo^2) / sum((NET_PT_REV - mean(NET_PT_REV))^2))) %>%
         gather(Model, Value) %>%
         separate(Model, c("Metric", "Model"), sep = "_") %>% 
         mutate(Metric = factor(Metric,
@@ -375,15 +375,17 @@ TestFit <- summarize(nonzero_obs,
                Model = factor(Model,
                               levels = c("Inpatient", 
                                          "Outpatient",
-                                         "Combo"))) %>%
-        ggplot(aes(x = Model,
-                   y = Value,
-                   fill = Model)) + 
+                                         "Combo"))) 
+
+
+TestFit <-  ggplot(TestFit_df, aes(x = Model,
+                                   y = Value,
+                                   fill = Model)) + 
         geom_bar(stat = "identity", width = 0.8, alpha = 0.5) + 
         facet_grid(Metric ~., scales = "free_y") + 
         geom_boxplot(data = TrainFit_rename,
                      aes(x  = Model, y = Value, fill = Model)) +
         theme_bw() + 
         ggtitle("Model Fit with Test Data") 
-        
+
                              
