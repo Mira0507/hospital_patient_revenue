@@ -250,13 +250,14 @@ GAMPvsO <- nonzero_obs %>%
                    color = Model)) +
         geom_point(alpha = 0.3) +
         facet_grid(Model~.) + 
-        geom_smooth(se = F, color = "black") +
+        geom_smooth(method = "lm", se = F, color = "black") +
         theme_bw() + 
         scale_x_log10() +
         scale_y_log10() + 
         xlab("Predicted Patient Revenue") + 
         ylab("Actual Patient Revenue") + 
         ggtitle("Comparison between Prediction and Actual Outcome")
+
 
 # Plotting Correlation Coefficient
 GAM_corr <- summarize(nonzero_obs,
@@ -358,9 +359,9 @@ GAMInStat <- TestStat_fn(GAMModelIn)
 GAMOutStat <- TestStat_fn(GAMModelOut)
 GAMComboStat <- TestStat_fn(GAMModelCombo)
 
-GAMTestFit <- data.frame(rbind(GAMInStat, 
-                                 GAMOutStat, 
-                                 GAMComboStat)) %>%
+GAMTestFit_df <- data.frame(rbind(GAMInStat, 
+                                  GAMOutStat, 
+                                  GAMComboStat)) %>%
         mutate(Model = c("Inpatient", 
                          "Outpatient",
                          "Combo")) %>%
@@ -372,14 +373,23 @@ GAMTestFit <- data.frame(rbind(GAMInStat,
                Model = factor(Model, 
                               levels = c("Inpatient", 
                                          "Outpatient",
-                                         "Combo"))) %>%
-        ggplot(aes(x = Model,
-                   y = Value,
-                   fill = Model)) + 
+                                         "Combo"))) 
+        
+GAMTestFit <- ggplot(GAMTestFit_df,
+                     aes(x = Model,
+                         y = Value,
+                         fill = Model)) + 
         geom_bar(stat = "identity", width = 0.8, alpha = 0.5) + 
         facet_grid(Metric ~., scales = "free_y") + 
         geom_boxplot(data = GAM_TrainFit_rename,
                      aes(x  = Model, y = Value, fill = Model)) +
         theme_bw() + 
-        ggtitle("Model Fit with Test Data") 
+        ggtitle("Model Fit with Test Data")        
 
+
+LG_TestFit_df <- inner_join(TestFit_df, 
+                            GAMTestFit_df,
+                            by = c("Metric", 
+                                   "Model"), 
+                            suffix = c("_Linear", "_GAM")) %>%
+        mutate(Ratio = round(Value_GAM / Value_Linear * 100, digits = 2)) 
